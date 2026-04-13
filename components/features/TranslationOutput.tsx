@@ -39,10 +39,10 @@ function CopyBtn({ text }: { text: string }) {
 /* ── Standard translation block ─────────────────────────── */
 function StandardBlock({ text }: { text: string }) {
   return (
-    <div className="animate-fade-in-up space-y-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <AlignLeft className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+      <div className="animate-fade-in-up space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlignLeft className="w-3.5 h-3.5 text-[var(--text-muted)]" />
           <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-secondary)]">
             标准翻译
           </span>
@@ -50,7 +50,7 @@ function StandardBlock({ text }: { text: string }) {
         <CopyBtn text={text} />
       </div>
       <div className={cn(
-        "rounded-xl px-4 py-4 text-sm leading-relaxed select-text cursor-text",
+        "rounded-xl px-4 py-3 text-[13px] leading-6 select-text cursor-text",
         "bg-[var(--surface-2)] border border-[var(--border)]",
         "text-[var(--text-primary)]"
       )}>
@@ -63,7 +63,7 @@ function StandardBlock({ text }: { text: string }) {
 /* ── Short video block ───────────────────────────────────── */
 function ShortVideoBlock({ text }: { text: string }) {
   return (
-    <div className="animate-fade-in-up space-y-2.5" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
+    <div className="animate-fade-in-up space-y-2" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -82,20 +82,20 @@ function ShortVideoBlock({ text }: { text: string }) {
       </div>
 
       {/* Card with amber left border */}
-      <div className={cn(
-        "rounded-xl overflow-hidden border border-[var(--accent)]/20",
-        "bg-gradient-to-br from-[var(--accent-glow)] to-[var(--surface-2)]"
-      )}>
-        {/* Top accent bar */}
-        <div className="h-0.5 bg-gradient-to-r from-[var(--accent)] via-[var(--accent)]/60 to-transparent" />
-        <div className="px-4 py-4 space-y-1">
+        <div className={cn(
+          "rounded-xl overflow-hidden border border-[var(--accent)]/20",
+          "bg-gradient-to-br from-[var(--accent-glow)] to-[var(--surface-2)]"
+        )}>
+          {/* Top accent bar */}
+          <div className="h-0.5 bg-gradient-to-r from-[var(--accent)] via-[var(--accent)]/60 to-transparent" />
+        <div className="px-4 py-3 space-y-0.5">
           {text.split("\n").filter(Boolean).map((line, i) => (
             <div key={i} className="flex items-start gap-2.5 group">
               <span className={cn(
                 "mt-1.5 w-1 h-1 rounded-full flex-shrink-0",
                 "bg-[var(--accent)] opacity-60"
               )} />
-              <p className="text-sm leading-relaxed text-[var(--text-primary)] select-text cursor-text flex-1">
+              <p className="text-[13px] leading-6 text-[var(--text-primary)] select-text cursor-text flex-1">
                 {line}
               </p>
             </div>
@@ -150,7 +150,7 @@ export function TranslationOutput({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Tab header */}
       <div className="flex items-center gap-2">
         <div className="h-px flex-1 bg-[var(--border)]" />
@@ -158,7 +158,7 @@ export function TranslationOutput({
           <button
             onClick={() => setActiveTab("standard")}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200",
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all duration-200",
               activeTab === "standard"
                 ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border)]"
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -170,7 +170,7 @@ export function TranslationOutput({
           <button
             onClick={() => setActiveTab("shortVideo")}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200",
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all duration-200",
               activeTab === "shortVideo"
                 ? "bg-[var(--surface)] text-[var(--text-primary)] shadow-sm border border-[var(--accent)]/20"
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"

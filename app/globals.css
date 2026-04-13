@@ -6,50 +6,52 @@
 @layer base {
   :root {
     /* Surfaces */
-    --bg:        #F2F3F8;
+    --bg:        #F7F3EC;
     --surface:   #FFFFFF;
-    --surface-2: #ECEDF5;
-    --border:    rgba(0, 0, 0, 0.07);
-    --border-strong: rgba(0, 0, 0, 0.13);
+    --surface-2: #F2EEE7;
+    --surface-3: #ECE6DB;
+    --border:    rgba(34, 41, 73, 0.14);
+    --border-strong: rgba(20, 28, 52, 0.28);
 
     /* Accent – warm amber gold */
-    --accent:    #C97E0A;
-    --accent-2:  #C04E14;
-    --accent-glow: rgba(201, 126, 10, 0.10);
+    --accent:    #B96D0C;
+    --accent-2:  #D1571F;
+    --accent-3:  #F2BE53;
+    --accent-glow: rgba(185, 109, 12, 0.16);
 
     /* Text */
-    --text-primary:   #0E1120;
-    --text-secondary: #40476B;
-    --text-muted:     #878FAA;
+    --text-primary:   #161B2A;
+    --text-secondary: #303A58;
+    --text-muted:     #5F6985;
 
     /* Shadows */
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.03);
-    --shadow-lg: 0 20px 48px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+    --shadow-sm: 0 2px 10px rgba(29, 33, 56, 0.05), 0 1px 2px rgba(29, 33, 56, 0.04);
+    --shadow-md: 0 14px 40px rgba(29, 33, 56, 0.10), 0 4px 12px rgba(29, 33, 56, 0.05);
+    --shadow-lg: 0 28px 72px rgba(29, 33, 56, 0.14), 0 8px 24px rgba(29, 33, 56, 0.06);
 
     /* Radius */
     --radius: 0.75rem;
 
     /* shadcn compat */
-    --background: 230 20% 96%;
-    --foreground: 228 35% 8%;
-    --card: 0 0% 100%;
-    --card-foreground: 228 35% 8%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 228 35% 8%;
-    --primary: 35 93% 42%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 230 15% 94%;
-    --secondary-foreground: 228 35% 8%;
-    --muted: 230 15% 93%;
-    --muted-foreground: 228 15% 55%;
-    --accent: 35 93% 42%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 230 12% 90%;
-    --input: 230 12% 90%;
-    --ring: 35 93% 42%;
+    --ui-background: 36 40% 95%;
+    --ui-foreground: 228 28% 13%;
+    --ui-card: 0 0% 100%;
+    --ui-card-foreground: 228 28% 13%;
+    --ui-popover: 0 0% 100%;
+    --ui-popover-foreground: 228 28% 13%;
+    --ui-primary: 33 88% 39%;
+    --ui-primary-foreground: 0 0% 100%;
+    --ui-secondary: 32 25% 92%;
+    --ui-secondary-foreground: 228 28% 13%;
+    --ui-muted: 32 24% 92%;
+    --ui-muted-foreground: 223 17% 46%;
+    --ui-accent: 33 88% 39%;
+    --ui-accent-foreground: 0 0% 100%;
+    --ui-destructive: 0 72% 51%;
+    --ui-destructive-foreground: 0 0% 100%;
+    --ui-border: 30 20% 84%;
+    --ui-input: 30 20% 84%;
+    --ui-ring: 33 88% 39%;
   }
 }
 
@@ -65,8 +67,17 @@
 
   body {
     background-color: var(--bg);
+    background-image:
+      radial-gradient(circle at top left, rgba(242, 190, 83, 0.16), transparent 28%),
+      radial-gradient(circle at top right, rgba(209, 87, 31, 0.10), transparent 24%),
+      linear-gradient(180deg, #fbfaf7 0%, #f7f3ec 48%, #f2ede4 100%);
     color: var(--text-primary);
     min-height: 100svh;
+  }
+
+  ::selection {
+    background: rgba(185, 109, 12, 0.20);
+    color: var(--text-primary);
   }
 }
 
@@ -113,6 +124,11 @@
   to   { transform: scaleY(1); }
 }
 
+@keyframes audio-progress {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
 /* ── Utility Classes ───────────────────────────────────── */
 @layer utilities {
   .animate-fade-in-up {
@@ -124,10 +140,13 @@
   .animate-shake {
     animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   }
+  .animate-audio-progress {
+    animation: audio-progress 1.8s linear infinite;
+  }
 
   /* Gradient logo text */
   .logo-gradient {
-    background: linear-gradient(135deg, var(--accent) 0%, #F5B832 50%, var(--accent-2) 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-3) 50%, var(--accent-2) 100%);
     background-size: 200% 200%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -137,18 +156,20 @@
 
   /* Glass card */
   .glass {
-    background: var(--surface);
+    background: rgba(255, 255, 255, 0.86);
     border: 1px solid var(--border);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
     box-shadow: var(--shadow-sm);
   }
 
   /* Glass header */
   .glass-header {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 252, 247, 0.82);
     backdrop-filter: blur(20px) saturate(1.8);
     -webkit-backdrop-filter: blur(20px) saturate(1.8);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
-    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    border-bottom: 1px solid rgba(20, 28, 52, 0.08);
+    box-shadow: 0 8px 24px rgba(29, 33, 56, 0.05);
   }
 
   /* Accent button */
@@ -157,11 +178,11 @@
     color: white;
     font-weight: 600;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 12px rgba(201,126,10,0.25);
+    box-shadow: 0 10px 28px rgba(185, 109, 12, 0.24);
   }
   .btn-accent:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 6px 24px rgba(201,126,10,0.30);
+    box-shadow: 0 18px 38px rgba(185, 109, 12, 0.28);
     filter: brightness(1.06);
   }
   .btn-accent:active:not(:disabled) {

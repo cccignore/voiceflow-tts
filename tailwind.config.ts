@@ -10,39 +10,39 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        background: "hsl(var(--ui-background))",
+        foreground: "hsl(var(--ui-foreground))",
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "hsl(var(--ui-card))",
+          foreground: "hsl(var(--ui-card-foreground))",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "hsl(var(--ui-popover))",
+          foreground: "hsl(var(--ui-popover-foreground))",
         },
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "hsl(var(--ui-primary))",
+          foreground: "hsl(var(--ui-primary-foreground))",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "hsl(var(--ui-secondary))",
+          foreground: "hsl(var(--ui-secondary-foreground))",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "hsl(var(--ui-muted))",
+          foreground: "hsl(var(--ui-muted-foreground))",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "hsl(var(--ui-accent))",
+          foreground: "hsl(var(--ui-accent-foreground))",
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "hsl(var(--ui-destructive))",
+          foreground: "hsl(var(--ui-destructive-foreground))",
         },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
+        border: "hsl(var(--ui-border))",
+        input: "hsl(var(--ui-input))",
+        ring: "hsl(var(--ui-ring))",
       },
       borderRadius: {
         lg: "var(--radius)",

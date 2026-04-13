@@ -58,52 +58,102 @@ export function AudioPlayer({
   const [isDragging, setIsDragging] = useState(false);
   const [scrubPct,   setScrubPct]   = useState(0);
 
+  const stopTracking = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const syncFromAudio = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!isDraggingRef.current) {
+      setCurrentTime(audio.currentTime);
+    }
+    if (isFinite(audio.duration)) {
+      setDuration(audio.duration);
+    }
+  }, []);
+
+  const startTracking = useCallback(() => {
+    stopTracking();
+
+    const tick = () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      if (!isDraggingRef.current) {
+        setCurrentTime(audio.currentTime);
+      }
+
+      if (isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      }
+
+      if (!audio.paused && !audio.ended) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+  }, [stopTracking]);
+
   /* ── Init ──────────────────────────────────────────── */
   useEffect(() => {
     const audio = new Audio(audioBase64);
+    audio.preload = "metadata";
     audioRef.current = audio;
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
 
-    const onMeta  = () => setDuration(audio.duration);
-    const onEnded = () => { setIsPlaying(false); setCurrentTime(0); };
-    const onTime  = () => { if (!isDraggingRef.current) setCurrentTime(audio.currentTime); };
+    const onLoaded = () => syncFromAudio();
+    const onPlay = () => {
+      setIsPlaying(true);
+      startTracking();
+    };
+    const onPause = () => {
+      setIsPlaying(false);
+      syncFromAudio();
+      stopTracking();
+    };
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      stopTracking();
+    };
+    const onTime = () => syncFromAudio();
 
-    audio.addEventListener("loadedmetadata", onMeta);
-    audio.addEventListener("ended",          onEnded);
-    audio.addEventListener("timeupdate",     onTime);
+    audio.addEventListener("loadedmetadata", onLoaded);
+    audio.addEventListener("durationchange", onLoaded);
+    audio.addEventListener("canplay", onLoaded);
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("timeupdate", onTime);
 
     return () => {
       audio.pause();
-      audio.removeEventListener("loadedmetadata", onMeta);
-      audio.removeEventListener("ended",          onEnded);
-      audio.removeEventListener("timeupdate",     onTime);
+      audio.removeEventListener("loadedmetadata", onLoaded);
+      audio.removeEventListener("durationchange", onLoaded);
+      audio.removeEventListener("canplay", onLoaded);
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("timeupdate", onTime);
       audio.src = "";
       audioRef.current = null;
-      cancelAnimationFrame(rafRef.current);
+      stopTracking();
     };
-  }, [audioBase64]);
-
-  /* ── RAF for smooth progress ───────────────────────── */
-  const tick = useCallback(() => {
-    const audio = audioRef.current;
-    if (audio && !isDraggingRef.current) setCurrentTime(audio.currentTime);
-    rafRef.current = requestAnimationFrame(tick);
-  }, []);
-
-  useEffect(() => {
-    if (isPlaying) { rafRef.current = requestAnimationFrame(tick); }
-    else           { cancelAnimationFrame(rafRef.current); }
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [isPlaying, tick]);
+  }, [audioBase64, startTracking, stopTracking, syncFromAudio]);
 
   /* ── Play / Pause ──────────────────────────────────── */
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (isPlaying) { audio.pause(); setIsPlaying(false); }
-    else           { audio.play().then(() => setIsPlaying(true)).catch(() => {}); }
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
   }, [isPlaying]);
 
   /* ── Scrub ─────────────────────────────────────────── */
@@ -139,7 +189,15 @@ export function AudioPlayer({
     seekTo(pctFromEvent(e.clientX));
     isDraggingRef.current = false;
     setIsDragging(false);
-  }, [pctFromEvent, seekTo]);
+    syncFromAudio();
+  }, [pctFromEvent, seekTo, syncFromAudio]);
+
+  const onPointerCancel = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    syncFromAudio();
+  }, [syncFromAudio]);
 
   /* ── Download ──────────────────────────────────────── */
   const handleDownload = useCallback(() => {
@@ -162,7 +220,7 @@ export function AudioPlayer({
   return (
     <div className="animate-fade-in-up">
       {/* Section label */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-2.5">
         <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
           生成音频
         </span>
@@ -170,24 +228,24 @@ export function AudioPlayer({
       </div>
 
       {/* Player card */}
-      <div className="rounded-2xl border border-[var(--border)] bg-white shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-[var(--border)] bg-white shadow-sm overflow-hidden transition-all duration-300 hover:shadow-[0_16px_34px_rgba(29,33,56,0.10)]">
 
         {/* Voice info + download */}
-        <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+        <div className="flex items-center gap-3 px-4 pt-3.5 pb-2.5">
           <div className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+            "w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0",
             "bg-gradient-to-br from-amber-50 to-orange-50",
             "border border-[var(--accent)]/15"
           )}>
             {isPlaying
               ? <PlayingBars />
-              : <Mic2 className="w-4 h-4 text-[var(--accent)]" />}
+              : <Mic2 className="w-3.5 h-3.5 text-[var(--accent)]" />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-[var(--text-primary)] leading-tight">
+            <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-tight">
               {voice?.name ?? "语音"}
             </p>
-            <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-tight">
+            <p className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-tight">
               {isPlaying ? "正在播放…" : (voice?.description ?? "已生成")}
             </p>
           </div>
@@ -195,18 +253,18 @@ export function AudioPlayer({
             onClick={handleDownload}
             aria-label="下载 MP3"
             className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+              "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0",
               "text-[var(--text-muted)] border border-[var(--border)]",
               "hover:text-[var(--accent)] hover:border-[var(--accent)]/30 hover:bg-amber-50",
               "transition-all duration-200"
             )}
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3 h-3" />
           </button>
         </div>
 
         {/* Progress track */}
-        <div className="px-4 pb-2">
+        <div className="px-4 pb-1.5">
           <div
             ref={trackRef}
             role="slider"
@@ -216,47 +274,53 @@ export function AudioPlayer({
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            className="relative h-1.5 rounded-full bg-[var(--surface-2)] cursor-pointer select-none group"
+            onPointerCancel={onPointerCancel}
+            className="relative h-1.5 rounded-full bg-[var(--surface-2)] cursor-pointer select-none group overflow-hidden"
           >
             <div
-              className="absolute inset-y-0 left-0 rounded-full bg-[var(--accent)] transition-[width] duration-75"
+              className={cn(
+                "absolute inset-y-0 left-0 rounded-full",
+                "bg-gradient-to-r from-[var(--accent)] via-[var(--accent-2)] to-[var(--accent)] bg-[length:200%_100%]",
+                isPlaying ? "animate-audio-progress" : "transition-[width] duration-150"
+              )}
               style={{ width: `${fillPct}%` }}
             />
             {/* Thumb */}
             <div
               className={cn(
                 "absolute top-1/2 -translate-y-1/2 -translate-x-1/2",
-                "w-3.5 h-3.5 rounded-full bg-white border-2 border-[var(--accent)]",
+                "w-3 h-3 rounded-full bg-white border-2 border-[var(--accent)]",
                 "shadow-sm transition-opacity duration-100",
                 "opacity-0 group-hover:opacity-100",
-                isDragging && "opacity-100 scale-110"
+                (isDragging || isPlaying) && "opacity-100 scale-110"
               )}
               style={{ left: `${fillPct}%` }}
             />
           </div>
           {/* Time stamps */}
-          <div className="flex items-center justify-between mt-1.5">
+          <div className="flex items-center justify-between mt-1">
             <span className="text-[10px] tabular-nums text-[var(--text-muted)]">{fmt(displayTime)}</span>
             <span className="text-[10px] tabular-nums text-[var(--text-muted)]">{fmt(duration)}</span>
           </div>
         </div>
 
         {/* Play / Pause button */}
-        <div className="flex items-center justify-center pb-4">
+        <div className="flex items-center justify-center pb-3">
           <button
             onClick={togglePlay}
             aria-label={isPlaying ? "暂停" : "播放"}
             className={cn(
-              "w-11 h-11 rounded-full flex items-center justify-center",
+              "w-10 h-10 rounded-full flex items-center justify-center",
               "bg-[var(--accent)] text-white",
               "shadow-[0_4px_16px_rgba(201,126,10,0.30)]",
               "hover:brightness-110 active:scale-95",
-              "transition-all duration-200"
+              "transition-all duration-200",
+              isPlaying && "animate-[pulse-glow_1.8s_ease-in-out_infinite]"
             )}
           >
             {isPlaying
-              ? <Pause className="w-4 h-4" />
-              : <Play  className="w-4 h-4 translate-x-0.5" />}
+              ? <Pause className="w-3.5 h-3.5" />
+              : <Play  className="w-3.5 h-3.5 translate-x-0.5" />}
           </button>
         </div>
       </div>
@@ -274,18 +338,18 @@ export function AudioPlayerSkeleton() {
         </span>
         <div className="h-px flex-1 bg-[var(--border)]" />
       </div>
-      <div className="rounded-2xl border border-[var(--border)] bg-white shadow-sm p-4 space-y-3">
+      <div className="rounded-2xl border border-[var(--border)] bg-white shadow-sm p-3.5 space-y-2.5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--surface-2)] animate-pulse flex-shrink-0" />
+          <div className="w-9 h-9 rounded-xl bg-[var(--surface-2)] animate-pulse flex-shrink-0" />
           <div className="flex-1 space-y-1.5">
             <div className="h-3 w-16 rounded-full bg-[var(--surface-2)] animate-pulse" />
             <div className="h-2.5 w-24 rounded-full bg-[var(--surface-2)] animate-pulse" />
           </div>
-          <div className="w-8 h-8 rounded-lg bg-[var(--surface-2)] animate-pulse" />
+          <div className="w-7 h-7 rounded-lg bg-[var(--surface-2)] animate-pulse" />
         </div>
         <div className="h-1.5 rounded-full bg-[var(--surface-2)] animate-pulse" />
         <div className="flex justify-center">
-          <div className="w-11 h-11 rounded-full bg-[var(--surface-2)] animate-pulse" />
+          <div className="w-10 h-10 rounded-full bg-[var(--surface-2)] animate-pulse" />
         </div>
       </div>
     </div>

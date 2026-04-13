@@ -57,10 +57,10 @@ export function Header({ onHistoryClick, historyCount = 0 }: HeaderProps) {
       <div className="w-full h-full px-5 sm:px-7 flex items-center justify-between gap-4">
 
         {/* ── Logo ──────────────────────────────────────── */}
-        <div className="flex items-center gap-2.5 select-none flex-shrink-0">
-          <WaveformIcon className="w-7 h-4 logo-gradient opacity-90" />
+        <div className="flex items-center gap-3 select-none flex-shrink-0">
+          <WaveformIcon className="w-9 h-5 logo-gradient opacity-95" />
           <span
-            className="font-syne text-base tracking-tight logo-gradient"
+            className="font-syne text-[17px] tracking-tight logo-gradient"
             style={{ fontWeight: 800 }}
           >
             VoiceFlow
