@@ -8,7 +8,6 @@ import {
 import { toast } from "sonner";
 import { TranslationOutput, TranslationSkeleton } from "./TranslationOutput";
 import { AudioPlayer, AudioPlayerSkeleton }        from "./AudioPlayer";
-import { MusicMixerPanel }                         from "./MusicMixerPanel";
 import { useTranslate }                            from "@/hooks/useTranslate";
 import { useTTS }                                  from "@/hooks/useTTS";
 import { VOICES, DEFAULT_VOICE_ID, EXAMPLE_TEXT } from "@/constants/voices";
@@ -744,15 +743,12 @@ export function SingleMode({ onComplete, cloneFrom, onCloneConsumed }: SingleMod
               {/* Audio */}
               {phase === "generating" && <AudioPlayerSkeleton />}
               {audioBase64 && phase === "done" && (
-                <>
-                  <AudioPlayer
-                    key={audioBase64}
-                    audioBase64={audioBase64}
-                    voiceId={voiceId}
-                    filenamePrefix="voiceflow"
-                  />
-                  <MusicMixerPanel voiceBase64={audioBase64} />
-                </>
+                <AudioPlayer
+                  key={audioBase64}
+                  audioBase64={audioBase64}
+                  voiceId={voiceId}
+                  filenamePrefix="voiceflow"
+                />
               )}
 
               {/* Translation */}
