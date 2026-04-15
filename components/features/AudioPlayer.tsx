@@ -101,9 +101,6 @@ export function AudioPlayer({
     const audio = new Audio(audioBase64);
     audio.preload = "metadata";
     audioRef.current = audio;
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
 
     const onLoaded = () => syncFromAudio();
     const onPlay = () => {

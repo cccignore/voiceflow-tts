@@ -1,22 +1,24 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { nanoid } from "nanoid";
 import type { HistoryItem } from "@/types";
 import {
   getHistory,
+  getHistoryServerSnapshot,
+  subscribeHistory,
   addHistoryItem,
   removeHistoryItem,
+  updateHistoryItem,
   clearHistory as storageClear,
 } from "@/lib/storage";
 
 export function useHistory() {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-
-  // Load from localStorage on mount (client only)
-  useEffect(() => {
-    setHistory(getHistory());
-  }, []);
+  const history = useSyncExternalStore(
+    subscribeHistory,
+    getHistory,
+    getHistoryServerSnapshot
+  );
 
   const add = useCallback(
     (item: Omit<HistoryItem, "id" | "timestamp">) => {
@@ -25,19 +27,24 @@ export function useHistory() {
         id:        nanoid(),
         timestamp: Date.now(),
       };
-      setHistory(addHistoryItem(full));
+      addHistoryItem(full);
     },
     []
   );
 
   const remove = useCallback((id: string) => {
-    setHistory(removeHistoryItem(id));
+    removeHistoryItem(id);
   }, []);
 
   const clearAll = useCallback(() => {
     storageClear();
-    setHistory([]);
   }, []);
 
-  return { history, add, remove, clearAll };
+  const togglePin = useCallback((id: string) => {
+    const item = history.find((entry) => entry.id === id);
+    if (!item) return;
+    updateHistoryItem(id, { pinned: !item.pinned });
+  }, [history]);
+
+  return { history, add, remove, clearAll, togglePin };
 }

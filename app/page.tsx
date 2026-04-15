@@ -7,19 +7,28 @@ import { BatchMode }     from "@/components/features/BatchMode";
 import { HistoryPanel }  from "@/components/features/HistoryPanel";
 import { useHistory }    from "@/hooks/useHistory";
 import { useMode }       from "@/contexts/mode-context";
-import type { SingleModeResult } from "@/components/features/SingleMode";
-import type { BatchItemCompletePayload } from "@/components/features/BatchMode";
+import type { SingleModeResult }          from "@/components/features/SingleMode";
+import type { BatchItemCompletePayload }   from "@/components/features/BatchMode";
+import type { HistoryItem }               from "@/types";
 
 function PageContent({
   onSingleComplete,
   onBatchItemComplete,
+  cloneFrom,
+  onCloneConsumed,
 }: {
-  onSingleComplete: (r: SingleModeResult) => void;
-  onBatchItemComplete: (p: BatchItemCompletePayload) => void;
+  onSingleComplete:   (r: SingleModeResult) => void;
+  onBatchItemComplete:(p: BatchItemCompletePayload) => void;
+  cloneFrom?:         HistoryItem | null;
+  onCloneConsumed?:   () => void;
 }) {
   const { mode } = useMode();
   return mode === "single" ? (
-    <SingleMode onComplete={onSingleComplete} />
+    <SingleMode
+      onComplete={onSingleComplete}
+      cloneFrom={cloneFrom}
+      onCloneConsumed={onCloneConsumed}
+    />
   ) : (
     <BatchMode onItemComplete={onBatchItemComplete} />
   );
@@ -27,7 +36,9 @@ function PageContent({
 
 export default function Home() {
   const [historyOpen, setHistoryOpen] = useState(false);
-  const { history, add, remove, clearAll } = useHistory();
+  const [cloneFrom,   setCloneFrom]   = useState<HistoryItem | null>(null);
+  const { history, add, remove, clearAll, togglePin } = useHistory();
+  const { setMode } = useMode();
 
   const handleComplete = useCallback((result: SingleModeResult) => {
     add({
@@ -37,6 +48,7 @@ export default function Home() {
       audioBase64:    result.audioBase64,
       voiceId:        result.voiceId,
       duration:       0,
+      style:          result.style,
     });
   }, [add]);
 
@@ -51,6 +63,13 @@ export default function Home() {
     });
   }, [add]);
 
+  const handleClone = useCallback((item: HistoryItem) => {
+    setHistoryOpen(false);
+    setMode("single");
+    // Brief delay so panel closes before SingleMode state update
+    setTimeout(() => setCloneFrom(item), 50);
+  }, [setMode]);
+
   return (
     <>
       <Header
@@ -64,6 +83,8 @@ export default function Home() {
           <PageContent
             onSingleComplete={handleComplete}
             onBatchItemComplete={handleBatchItemComplete}
+            cloneFrom={cloneFrom}
+            onCloneConsumed={() => setCloneFrom(null)}
           />
         </div>
       </div>
@@ -74,6 +95,8 @@ export default function Home() {
         history={history}
         onRemove={remove}
         onClear={clearAll}
+        onTogglePin={togglePin}
+        onClone={handleClone}
       />
     </>
   );

@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { nanoid } from "nanoid";
 import {
-  Plus, Trash2, Loader2, PackageOpen, Zap, LayoutList,
+  Plus, Trash2, Loader2, PackageOpen, Zap, LayoutList, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BatchItemCard }           from "./BatchItemCard";
@@ -89,12 +89,8 @@ export function BatchMode({ onItemComplete }: { onItemComplete?: (p: BatchItemCo
   const doneCount     = doneItems.length;
   const totalFilled   = items.filter(i => i.text.trim()).length;
 
-  /* ── Sequential processing ────────────────────────── */
-  const processAll = useCallback(async () => {
-    if (!canProcess) return;
-    setIsProcessing(true);
-
-    const snapshot = items.filter(i => i.text.trim() && i.status !== "done");
+  /* ── Core processing loop (shared by processAll + retryFailed) ── */
+  const processSequential = useCallback(async (snapshot: BatchItem[]) => {
     let newSuccessCount = 0;
 
     for (const item of snapshot) {
@@ -137,7 +133,6 @@ export function BatchMode({ onItemComplete }: { onItemComplete?: (p: BatchItemCo
         updateItem(item.id, { status: "done", translation, audioBase64 });
         newSuccessCount++;
 
-        // 保存到历史记录
         onItemComplete?.({
           chineseText:    item.text.trim(),
           standardText:   translation.standard,
@@ -151,6 +146,15 @@ export function BatchMode({ onItemComplete }: { onItemComplete?: (p: BatchItemCo
       }
     }
 
+    return newSuccessCount;
+  }, [style, voiceId, updateItem, onItemComplete]);
+
+  /* ── Process all pending/error items ─────────────── */
+  const processAll = useCallback(async () => {
+    if (!canProcess) return;
+    setIsProcessing(true);
+    const snapshot = items.filter(i => i.text.trim() && i.status !== "done");
+    const newSuccessCount = await processSequential(snapshot);
     setIsProcessing(false);
     const total = doneCount + newSuccessCount;
     if (total > 0) {
@@ -158,7 +162,24 @@ export function BatchMode({ onItemComplete }: { onItemComplete?: (p: BatchItemCo
     } else {
       toast.error("全部条目处理失败，请检查后重试");
     }
-  }, [canProcess, items, style, voiceId, updateItem, doneCount]);
+  }, [canProcess, items, processSequential, doneCount]);
+
+  /* ── Retry failed items only ─────────────────────── */
+  const failedItems    = items.filter(i => i.status === "error");
+  const canRetryFailed = !isProcessing && failedItems.length > 0;
+
+  const retryFailed = useCallback(async () => {
+    if (!canRetryFailed) return;
+    setIsProcessing(true);
+    const snapshot = items.filter(i => i.status === "error");
+    const newSuccessCount = await processSequential(snapshot);
+    setIsProcessing(false);
+    if (newSuccessCount > 0) {
+      toast.success(`重试完成，${newSuccessCount} 条成功`);
+    } else {
+      toast.error("重试失败，请检查后重试");
+    }
+  }, [canRetryFailed, items, processSequential]);
 
   /* ── ZIP download ─────────────────────────────────── */
   const downloadZip = useCallback(async () => {
@@ -305,6 +326,21 @@ export function BatchMode({ onItemComplete }: { onItemComplete?: (p: BatchItemCo
             >
               <PackageOpen className="w-4 h-4" />
               打包下载 ({doneCount} 个 .mp3)
+            </button>
+          )}
+
+          {/* Retry failed button */}
+          {canRetryFailed && (
+            <button
+              onClick={retryFailed}
+              className={cn(
+                "flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-sm font-medium",
+                "border border-red-500/30 text-red-400",
+                "hover:bg-red-500/10 transition-all duration-200"
+              )}
+            >
+              <RotateCcw className="w-4 h-4" />
+              重试失败项 ({failedItems.length})
             </button>
           )}
 

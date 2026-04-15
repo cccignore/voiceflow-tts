@@ -1,14 +1,16 @@
 import { VOICES } from "@/constants/voices";
+import type { VoiceSettings } from "@/types";
 
 const ELEVENLABS_BASE = "https://api.elevenlabs.io/v1";
 
 export interface TTSOptions {
-  text: string;
-  voiceId: string;
+  text:           string;
+  voiceId:        string;
+  voiceSettings?: Partial<VoiceSettings>;
 }
 
 export interface TTSError {
-  status: string;
+  status:  string;
   message: string;
 }
 
@@ -27,41 +29,38 @@ export async function generateSpeech(options: TTSOptions): Promise<ArrayBuffer> 
     throw new Error("ElevenLabs API Key 未配置，请检查 .env.local");
   }
 
-  const { text, voiceId } = options;
+  const { text, voiceId, voiceSettings } = options;
+  const vs = voiceSettings ?? {};
 
   const res = await fetch(
     `${ELEVENLABS_BASE}/text-to-speech/${voiceId}`,
     {
-      method: "POST",
+      method:  "POST",
       headers: {
-        "xi-api-key": apiKey,
+        "xi-api-key":   apiKey,
         "Content-Type": "application/json",
-        Accept: "audio/mpeg",
+        Accept:         "audio/mpeg",
       },
       body: JSON.stringify({
         text,
         model_id: "eleven_turbo_v2_5",
         voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.3,
+          stability:         vs.stability         ?? 0.5,
+          similarity_boost:  vs.similarity_boost  ?? 0.75,
+          style:             vs.style             ?? 0.3,
           use_speaker_boost: true,
+          speed:             vs.speed             ?? 1.0,
         },
       }),
     }
   );
 
   if (!res.ok) {
-    // 尝试解析错误体
     let errBody: { detail?: TTSError } = {};
-    try {
-      errBody = await res.json();
-    } catch {
-      // 非 JSON 响应（如纯文本错误）
-    }
+    try { errBody = await res.json(); } catch { /* non-JSON response */ }
 
     const status = errBody.detail?.status ?? "";
-    const msg = errBody.detail?.message ?? "";
+    const msg    = errBody.detail?.message ?? "";
 
     if (status === "detected_unusual_activity") {
       throw new Error(

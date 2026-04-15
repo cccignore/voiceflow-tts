@@ -1,18 +1,29 @@
 "use client";
 
-import { useState, useCallback, type KeyboardEvent } from "react";
+import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from "react";
 import {
   Loader2, Mic2, AlertCircle, RefreshCw, AudioLines,
-  Sparkles, Check, AlignLeft, Zap,
+  Sparkles, AlignLeft, Zap, Play, Square, SlidersHorizontal, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TranslationOutput, TranslationSkeleton } from "./TranslationOutput";
 import { AudioPlayer, AudioPlayerSkeleton }        from "./AudioPlayer";
+import { MusicMixerPanel }                         from "./MusicMixerPanel";
 import { useTranslate }                            from "@/hooks/useTranslate";
 import { useTTS }                                  from "@/hooks/useTTS";
 import { VOICES, DEFAULT_VOICE_ID, EXAMPLE_TEXT } from "@/constants/voices";
+import { bufferToBase64 }                          from "@/lib/audio";
 import { cn }                                      from "@/lib/utils";
-import type { TranslationResult }                  from "@/types";
+import {
+  DEFAULT_VOICE_SETTINGS,
+  VOICE_PRESETS,
+  type VoiceSettings,
+  type TranslationResult,
+  type HistoryItem,
+} from "@/types";
+
+/* ── Module-level voice preview cache (persists across renders) ── */
+const voicePreviewCache = new Map<string, string>();
 
 type Phase = "idle" | "translating" | "generating" | "done";
 
@@ -60,30 +71,105 @@ function StyleToggle({
   );
 }
 
-/* ── Voice select + preview card ───────────────────────── */
+/* ── Voice preview button ──────────────────────────────── */
+function VoicePreviewBtn({ voiceId, disabled }: { voiceId: string; disabled?: boolean }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [state, setState] = useState<"idle" | "loading" | "playing">("idle");
+
+  const stop = () => {
+    audioRef.current?.pause();
+    if (audioRef.current) audioRef.current.currentTime = 0;
+    setState("idle");
+  };
+
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
+
+  const handleClick = async () => {
+    if (disabled) return;
+    if (state === "playing") { stop(); return; }
+    if (state === "loading") return;
+
+    const cached = voicePreviewCache.get(voiceId);
+    if (cached) {
+      const audio = new Audio(cached);
+      audioRef.current = audio;
+      audio.play().then(() => setState("playing")).catch(() => setState("idle"));
+      audio.addEventListener("ended", () => setState("idle"));
+      return;
+    }
+
+    setState("loading");
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Hello! This is a preview of how your audio will sound with this voice.",
+          voiceId,
+        }),
+      });
+      if (!res.ok) { setState("idle"); toast.error("试听加载失败"); return; }
+      const buf = await res.arrayBuffer();
+      const b64 = bufferToBase64(buf);
+      voicePreviewCache.set(voiceId, b64);
+      const audio = new Audio(b64);
+      audioRef.current = audio;
+      audio.play().then(() => setState("playing")).catch(() => setState("idle"));
+      audio.addEventListener("ended", () => setState("idle"));
+    } catch {
+      setState("idle");
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={disabled}
+      title={state === "playing" ? "停止试听" : "试听此声音"}
+      className={cn(
+        "flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg flex-shrink-0",
+        "border transition-all duration-200",
+        state === "playing"
+          ? "border-[var(--accent)]/40 text-[var(--accent)] bg-[var(--accent-glow)]"
+          : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]/25 hover:bg-[var(--accent-glow)]",
+        disabled && "opacity-40 cursor-not-allowed pointer-events-none"
+      )}
+    >
+      {state === "loading" ? <Loader2 className="w-3 h-3 animate-spin" /> :
+       state === "playing" ? <Square  className="w-3 h-3" /> :
+                             <Play    className="w-3 h-3" />}
+      {state === "loading" ? "加载中" : state === "playing" ? "停止" : "试听"}
+    </button>
+  );
+}
+
+/* ── Voice select + preview ────────────────────────────── */
 function VoiceSelect({
   value, onChange, disabled,
 }: {
   value: string; onChange: (v: string) => void; disabled?: boolean;
 }) {
   return (
-    <div>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        disabled={disabled}
-        className={cn(
-          "w-full h-[40px] px-3.5 rounded-xl text-[13px] font-medium",
-          "bg-[var(--surface-2)] text-[var(--text-primary)]",
-          "border border-[var(--border)] outline-none",
-          "focus:border-[var(--accent)]/50 focus:bg-white transition-colors cursor-pointer",
-          "disabled:opacity-50 disabled:cursor-not-allowed"
-        )}
-      >
-        {VOICES.map(v => (
-          <option key={v.id} value={v.id}>{v.name} · {v.description}</option>
-        ))}
-      </select>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          disabled={disabled}
+          className={cn(
+            "flex-1 h-[40px] px-3.5 rounded-xl text-[13px] font-medium",
+            "bg-[var(--surface-2)] text-[var(--text-primary)]",
+            "border border-[var(--border)] outline-none",
+            "focus:border-[var(--accent)]/50 focus:bg-white transition-colors cursor-pointer",
+            "disabled:opacity-50 disabled:cursor-not-allowed"
+          )}
+        >
+          {VOICES.map(v => (
+            <option key={v.id} value={v.id}>{v.name} · {v.description}</option>
+          ))}
+        </select>
+        <VoicePreviewBtn voiceId={value} disabled={disabled} />
+      </div>
     </div>
   );
 }
@@ -183,6 +269,129 @@ function EmptyState() {
   );
 }
 
+/* ── Voice parameter slider ───────────────────────────── */
+function VoiceParamSlider({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  disabled?: boolean;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-medium text-[var(--text-secondary)]">{label}</span>
+        <span className="text-[10px] tabular-nums text-[var(--text-muted)]">{value.toFixed(2)}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        disabled={disabled}
+        className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-[var(--accent)] disabled:opacity-50"
+      />
+      <p className="text-[9px] text-[var(--text-muted)]">{hint}</p>
+    </div>
+  );
+}
+
+/* ── Voice parameter panel ─────────────────────────────── */
+function VoiceParamPanel({
+  settings,
+  onChange,
+  disabled,
+}: {
+  settings: VoiceSettings;
+  onChange:  (s: VoiceSettings) => void;
+  disabled?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const activePresetId = VOICE_PRESETS.find(p =>
+    Math.abs(p.settings.stability        - settings.stability)        < 0.01 &&
+    Math.abs(p.settings.style            - settings.style)            < 0.01 &&
+    Math.abs(p.settings.speed            - settings.speed)            < 0.01
+  )?.id;
+
+  return (
+    <div className={cn("space-y-2.5", disabled && "opacity-60 pointer-events-none")}>
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <SlidersHorizontal className="w-3 h-3 text-[var(--text-muted)]" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+            语音风格
+          </span>
+        </div>
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="flex items-center gap-0.5 text-[10px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+        >
+          {expanded ? "收起" : "微调"}
+          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+      </div>
+
+      {/* Quick preset pills */}
+      <div className="flex gap-1.5 flex-wrap">
+        {VOICE_PRESETS.map(p => (
+          <button
+            key={p.id}
+            onClick={() => onChange({ ...settings, ...p.settings })}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all duration-150",
+              activePresetId === p.id
+                ? "bg-[var(--accent)]/15 border-[var(--accent)]/50 text-[var(--accent)]"
+                : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]/25 hover:bg-[var(--accent-glow)]"
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Fine-tune sliders */}
+      {expanded && (
+        <div className="space-y-3 pt-1 border-t border-[var(--border)] animate-fade-in">
+          <VoiceParamSlider
+            label="情绪强度" hint="克制 ← 越高越夸张 → 活泼"
+            value={settings.style} min={0} max={1} step={0.05}
+            disabled={disabled}
+            onChange={v => onChange({ ...settings, style: v })}
+          />
+          <VoiceParamSlider
+            label="声音稳定性" hint="多变 ← 越高越稳定 → 一致"
+            value={settings.stability} min={0} max={1} step={0.05}
+            disabled={disabled}
+            onChange={v => onChange({ ...settings, stability: v })}
+          />
+          <VoiceParamSlider
+            label="语速" hint="慢 ← 正常 1.0 → 快"
+            value={settings.speed} min={0.7} max={1.3} step={0.05}
+            disabled={disabled}
+            onChange={v => onChange({ ...settings, speed: v })}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Exports ───────────────────────────────────────────── */
 export interface SingleModeResult {
   chineseText:    string;
@@ -190,14 +399,17 @@ export interface SingleModeResult {
   shortVideoText: string;
   audioBase64:    string;
   voiceId:        string;
+  style:          "standard" | "shortVideo";
 }
 
 export interface SingleModeProps {
-  onComplete?: (result: SingleModeResult) => void;
+  onComplete?:       (result: SingleModeResult) => void;
+  cloneFrom?:        HistoryItem | null;
+  onCloneConsumed?:  () => void;
 }
 
 /* ── SingleMode ────────────────────────────────────────── */
-export function SingleMode({ onComplete }: SingleModeProps = {}) {
+export function SingleMode({ onComplete, cloneFrom, onCloneConsumed }: SingleModeProps = {}) {
   const [inputText,   setInputText]   = useState("");
   const [style,       setStyle]       = useState<"standard" | "shortVideo">("shortVideo");
   const [voiceId,     setVoiceId]     = useState(DEFAULT_VOICE_ID);
@@ -207,9 +419,33 @@ export function SingleMode({ onComplete }: SingleModeProps = {}) {
   const [translation, setTranslation] = useState<TranslationResult | null>(null);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [usedStyle,   setUsedStyle]   = useState<"standard" | "shortVideo">("shortVideo");
+  const [activeOutputTab, setActiveOutputTab] = useState<"standard" | "shortVideo">("shortVideo");
+  const [editedTexts,     setEditedTexts]     = useState<{ standard?: string; shortVideo?: string }>({});
+  const [voiceSettings,   setVoiceSettings]   = useState<VoiceSettings>(DEFAULT_VOICE_SETTINGS);
 
   const { translate } = useTranslate();
   const { generate  } = useTTS();
+
+  /* ── Clone from history ──────────────────────────────── */
+  useEffect(() => {
+    if (!cloneFrom) return;
+    setInputText(cloneFrom.chineseText);
+    setVoiceId(cloneFrom.voiceId);
+    if (cloneFrom.style) {
+      setStyle(cloneFrom.style);
+      setActiveOutputTab(cloneFrom.style);
+    }
+    setPhase("idle");
+    setTranslation(null);
+    setAudioBase64(null);
+    setEditedTexts({});
+    setErrorMsg("");
+    onCloneConsumed?.();
+    // Scroll to top of textarea on mobile
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    toast.success("已回填文案，可直接修改或重新生成");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloneFrom]);
 
   const isLoading = phase === "translating" || phase === "generating";
   const hasResult = translation || phase === "translating" || phase === "generating";
@@ -238,6 +474,8 @@ export function SingleMode({ onComplete }: SingleModeProps = {}) {
     setTranslation(null);
     setAudioBase64(null);
     setUsedStyle(style);
+    setActiveOutputTab(style);
+    setEditedTexts({});
     setPhase("translating");
 
     const result = await translate(text);
@@ -250,7 +488,7 @@ export function SingleMode({ onComplete }: SingleModeProps = {}) {
 
     setPhase("generating");
     const ttsText = style === "shortVideo" ? result.shortVideo : result.standard;
-    const audio   = await generate(ttsText, voiceId);
+    const audio   = await generate(ttsText, voiceId, voiceSettings);
     if (!audio) {
       setPhase("done");
       setErrorMsg("语音生成失败，翻译结果仍可复制使用");
@@ -266,8 +504,55 @@ export function SingleMode({ onComplete }: SingleModeProps = {}) {
       shortVideoText: result.shortVideo,
       audioBase64:    audio,
       voiceId,
+      style,
     });
-  }, [inputText, isLoading, style, voiceId, translate, generate, onComplete]);
+  }, [inputText, isLoading, style, voiceId, voiceSettings, translate, generate, onComplete]);
+
+  /* ── Regenerate audio only (with possibly-edited text) ── */
+  const handleRegenerateAudio = useCallback(async () => {
+    if (!translation || phase === "generating") return;
+    const text = activeOutputTab === "shortVideo"
+      ? (editedTexts.shortVideo ?? translation.shortVideo)
+      : (editedTexts.standard  ?? translation.standard);
+
+    setPhase("generating");
+    setAudioBase64(null);
+    setErrorMsg("");
+    const audio = await generate(text, voiceId, voiceSettings);
+    if (!audio) {
+      setPhase("done");
+      setErrorMsg("语音生成失败，请重试");
+      return;
+    }
+    setAudioBase64(audio);
+    setPhase("done");
+    setErrorMsg("");
+
+    onComplete?.({
+      chineseText:    inputText.trim(),
+      standardText:   editedTexts.standard   ?? translation.standard,
+      shortVideoText: editedTexts.shortVideo  ?? translation.shortVideo,
+      audioBase64:    audio,
+      voiceId,
+      style:          activeOutputTab,
+    });
+  }, [translation, activeOutputTab, editedTexts, voiceId, voiceSettings, generate, phase, onComplete, inputText]);
+
+  const handleOutputTextChange = useCallback((tab: "standard" | "shortVideo", text: string) => {
+    setEditedTexts((prev) => {
+      const baseText = tab === "standard"
+        ? translation?.standard ?? ""
+        : translation?.shortVideo ?? "";
+
+      if (text === baseText) {
+        const next = { ...prev };
+        delete next[tab];
+        return next;
+      }
+
+      return { ...prev, [tab]: text };
+    });
+  }, [translation]);
 
   const handleInputChange = (v: string) => {
     const sliced = v.slice(0, MAX_CHARS);
@@ -277,6 +562,8 @@ export function SingleMode({ onComplete }: SingleModeProps = {}) {
       setErrorMsg("");
       setTranslation(null);
       setAudioBase64(null);
+      setActiveOutputTab(style);
+      setEditedTexts({});
     }
   };
 
@@ -419,6 +706,15 @@ export function SingleMode({ onComplete }: SingleModeProps = {}) {
               />
             </div>
 
+            {/* Voice parameter panel */}
+            <div className="mt-3 border-t border-[var(--border)] pt-3">
+              <VoiceParamPanel
+                settings={voiceSettings}
+                onChange={setVoiceSettings}
+                disabled={isLoading}
+              />
+            </div>
+
             {errorMsg && (
               <div className="mt-3 flex items-start gap-2.5 rounded-2xl p-3 bg-red-50 border border-red-200 text-red-700 shadow-sm">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -448,17 +744,39 @@ export function SingleMode({ onComplete }: SingleModeProps = {}) {
               {/* Audio */}
               {phase === "generating" && <AudioPlayerSkeleton />}
               {audioBase64 && phase === "done" && (
-                <AudioPlayer
-                  audioBase64={audioBase64}
-                  voiceId={voiceId}
-                  filenamePrefix="voiceflow"
-                />
+                <>
+                  <AudioPlayer
+                    key={audioBase64}
+                    audioBase64={audioBase64}
+                    voiceId={voiceId}
+                    filenamePrefix="voiceflow"
+                  />
+                  <MusicMixerPanel voiceBase64={audioBase64} />
+                </>
               )}
 
               {/* Translation */}
               {phase === "translating" && <TranslationSkeleton />}
               {translation && (
-                <TranslationOutput result={translation} defaultTab={usedStyle} />
+                <>
+                  <TranslationOutput
+                    result={translation}
+                    defaultTab={usedStyle}
+                    activeTab={activeOutputTab}
+                    onActiveTabChange={setActiveOutputTab}
+                    editedTexts={editedTexts}
+                    onTextChange={handleOutputTextChange}
+                  />
+                  {phase === "done" && (
+                    <button
+                      onClick={handleRegenerateAudio}
+                      className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      仅重新生成语音
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}

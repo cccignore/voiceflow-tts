@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import {
   Play, Pause, Download, Trash2,
-  ChevronDown, ChevronUp, Copy, Check,
+  ChevronDown, ChevronUp, Copy, Check, Star, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { VOICES } from "@/constants/voices";
@@ -81,10 +81,14 @@ function MiniPlayer({ audioBase64 }: { audioBase64: string }) {
 function MiniCopy({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
   const handle = async () => {
-    await navigator.clipboard.writeText(text).catch(() => {});
-    setCopied(true);
-    toast.success(`已复制${label}`);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success(`已复制${label}`);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(`复制${label}失败，请手动选择文本`);
+    }
   };
   return (
     <button
@@ -99,11 +103,13 @@ function MiniCopy({ text, label }: { text: string; label: string }) {
 
 /* ── HistoryItemCard ──────────────────────────────────── */
 interface Props {
-  item: HistoryItem;
-  onRemove: (id: string) => void;
+  item:          HistoryItem;
+  onRemove:      (id: string) => void;
+  onTogglePin?:  (id: string) => void;
+  onClone?:      (item: HistoryItem) => void;
 }
 
-export function HistoryItemCard({ item, onRemove }: Props) {
+export function HistoryItemCard({ item, onRemove, onTogglePin, onClone }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const voice = VOICES.find((v) => v.id === item.voiceId);
@@ -134,14 +140,37 @@ export function HistoryItemCard({ item, onRemove }: Props) {
       <div className="px-4 pt-3.5 pb-3 space-y-2">
         {/* Meta row */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] tabular-nums text-[var(--text-muted)]">
-            {fmtTimestamp(item.timestamp)}
-          </span>
-          {voice && (
-            <span className="text-[10px] text-[var(--text-muted)]">
-              {voice.name}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] tabular-nums text-[var(--text-muted)]">
+              {fmtTimestamp(item.timestamp)}
             </span>
-          )}
+            {item.pinned && (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)]">
+                已收藏
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {voice && (
+              <span className="text-[10px] text-[var(--text-muted)]">
+                {voice.name}
+              </span>
+            )}
+            {onTogglePin && (
+              <button
+                onClick={() => onTogglePin(item.id)}
+                aria-label={item.pinned ? "取消收藏" : "收藏"}
+                className={cn(
+                  "w-5 h-5 flex items-center justify-center rounded transition-all duration-200",
+                  item.pinned
+                    ? "text-[var(--accent)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--accent)]"
+                )}
+              >
+                <Star className={cn("w-3 h-3", item.pinned && "fill-current")} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Chinese preview */}
@@ -180,6 +209,24 @@ export function HistoryItemCard({ item, onRemove }: Props) {
             {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             {expanded ? "收起" : "详情"}
           </button>
+
+          {/* Clone / reuse */}
+          {onClone && (
+            <button
+              onClick={() => onClone(item)}
+              aria-label="使用此稿再次生成"
+              title="回填文案并切换到单条模式"
+              className={cn(
+                "flex items-center gap-1 text-[10px] font-medium px-2 h-7 rounded-lg",
+                "border border-[var(--border)] text-[var(--text-secondary)]",
+                "hover:text-[var(--accent)] hover:border-[var(--accent)]/30 hover:bg-[var(--accent-glow)]",
+                "transition-all duration-200"
+              )}
+            >
+              <RotateCcw className="w-3 h-3" />
+              再次生成
+            </button>
+          )}
 
           {/* Spacer */}
           <div className="flex-1" />
