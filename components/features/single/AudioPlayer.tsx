@@ -5,7 +5,7 @@ import {
   type PointerEvent,
 } from "react";
 import { Play, Pause, Download, Mic2 } from "lucide-react";
-import { VOICES } from "@/constants/voices";
+import { VOICES } from "@/config/voices";
 import { cn } from "@/lib/utils";
 
 /* ── helpers ──────────────────────────────────────────── */

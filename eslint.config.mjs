@@ -9,9 +9,8 @@ const config = [
       ".agents/**",
       "**/.agents/**",
       ".claude/**",
-      "DEPLOY_VERCEL_ALIYUN.md",
-      "PLAN.md",
-      "TODO.md",
+      "docs/**",
+      "output/**",
     ],
   },
 ];

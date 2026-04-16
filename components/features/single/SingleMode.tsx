@@ -10,7 +10,7 @@ import { TranslationOutput, TranslationSkeleton } from "./TranslationOutput";
 import { AudioPlayer, AudioPlayerSkeleton }        from "./AudioPlayer";
 import { useTranslate }                            from "@/hooks/useTranslate";
 import { useTTS }                                  from "@/hooks/useTTS";
-import { VOICES, DEFAULT_VOICE_ID, EXAMPLE_TEXT } from "@/constants/voices";
+import { VOICES, DEFAULT_VOICE_ID, EXAMPLE_TEXT } from "@/config/voices";
 import { bufferToBase64 }                          from "@/lib/audio";
 import { cn }                                      from "@/lib/utils";
 import {

@@ -9,7 +9,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { HistoryItemCard } from "./HistoryItemCard";
-import { VOICES } from "@/constants/voices";
+import { VOICES } from "@/config/voices";
 import type { HistoryItem } from "@/types";
 import { cn } from "@/lib/utils";
 

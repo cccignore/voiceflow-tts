@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateSpeech, isValidVoiceId } from "@/lib/elevenlabs";
-import { DEFAULT_VOICE_ID } from "@/constants/voices";
+import { DEFAULT_VOICE_ID } from "@/config/voices";
 
 export const runtime = "nodejs";
 

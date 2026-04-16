@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>飞书批量语音生成</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: #f7f5f0;
+      color: #1c1c1e;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 16px 80px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 660px;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 28px 32px 24px;
+      border-bottom: 1px solid #f0ebe2;
+      background: linear-gradient(135deg, #fffdf7, #fff8ec);
+    }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1c1c1e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header h1 .icon {
+      width: 32px; height: 32px;
+      background: #f2be53;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .header p {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #8a8078;
+      line-height: 1.6;
+    }
+
+    /* ── Input section ── */
+    .input-section {
+      padding: 24px 32px;
+      border-bottom: 1px solid #f0ebe2;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    .url-input {
+      flex: 1;
+      height: 44px;
+      padding: 0 14px;
+      border: 1.5px solid #e8e0d4;
+      border-radius: 12px;
+      font-size: 13px;
+      color: #1c1c1e;
+      background: #fafaf8;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .url-input:focus { border-color: #f2be53; background: #fff; }
+    .url-input::placeholder { color: #b0a898; }
+
+    .btn-start {
+      height: 44px;
+      padding: 0 22px;
+      border: none;
+      border-radius: 12px;
+      background: #f2be53;
+      color: #1c1c1e;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s, opacity .15s;
+    }
+    .btn-start:hover { background: #e6b040; }
+    .btn-start:disabled { opacity: .45; cursor: not-allowed; }
+
+    .url-hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #b0a898;
+    }
+    .url-hint.error { color: #e05252; }
+    .url-hint.ok    { color: #4caf7d; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      padding: 12px 32px;
+      background: #faf8f4;
+      border-bottom: 1px solid #f0ebe2;
+      font-size: 13px;
+      color: #6b6560;
+      display: none;
+    }
+    .stats-bar.show { display: block; }
+    .stats-bar strong { color: #1c1c1e; }
+
+    /* ── Progress list ── */
+    .list-section {
+      padding: 16px 32px 8px;
+      display: none;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+    .list-section.show { display: block; }
+
+    .record-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f5f0e8;
+      font-size: 13px;
+    }
+    .record-item:last-child { border-bottom: none; }
+
+    .record-icon {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+    }
+    .record-icon.pending  { background: #f0ebe2; color: #b0a898; }
+    .record-icon.active   { background: #fff3d0; color: #c8860a; animation: pulse 1s ease infinite; }
+    .record-icon.done     { background: #e6f5ec; color: #4caf7d; }
+    .record-icon.error    { background: #fdecea; color: #e05252; }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .5; }
+    }
+
+    .record-text {
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: #3c3835;
+    }
+    .record-text.muted { color: #b0a898; }
+
+    .record-steps {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .step {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #f5f0e8;
+      color: #b0a898;
+    }
+    .step.done    { background: #e6f5ec; color: #4caf7d; }
+    .step.active  { background: #fff3d0; color: #c8860a; }
+    .step.error   { background: #fdecea; color: #e05252; }
+
+    /* ── Summary ── */
+    .summary {
+      margin: 16px 32px 24px;
+      padding: 16px 20px;
+      border-radius: 14px;
+      font-size: 14px;
+      display: none;
+    }
+    .summary.show { display: block; }
+    .summary.success {
+      background: #e6f5ec;
+      color: #2e7d52;
+      border: 1px solid #b7dfc9;
+    }
+    .summary.partial {
+      background: #fff8e6;
+      color: #9a6400;
+      border: 1px solid #f2d88a;
+    }
+    .summary-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .summary-sub   { font-size: 12px; opacity: .75; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>
+      <span class="icon">🎙️</span>
+      飞书批量语音生成
+    </h1>
+    <p>粘贴飞书多维表格链接，自动翻译「中文脚本」并生成英文语音，结果直接写回表格。</p>
+  </div>
+
+  <!-- Input -->
+  <div class="input-section">
+    <div class="input-row">
+      <input
+        id="urlInput"
+        class="url-input"
+        type="text"
+        placeholder="https://xxx.feishu.cn/base/...?table=tbl..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button id="startBtn" class="btn-start" disabled>开始处理</button>
+    </div>
+    <p id="urlHint" class="url-hint">从飞书表格顶部复制完整链接粘贴在此</p>
+  </div>
+
+  <!-- Stats -->
+  <div id="statsBar" class="stats-bar"></div>
+
+  <!-- Progress list -->
+  <div id="listSection" class="list-section">
+    <ul id="recordList" style="list-style:none;"></ul>
+  </div>
+
+  <!-- Summary -->
+  <div id="summary" class="summary"></div>
+
+</div>
+
+<script>
+  // ── URL 解析 ────────────────────────────────────────────────────
+  function parseFeishuUrl(raw) {
+    try {
+      const u = new URL(raw.trim());
+      const match = u.pathname.match(/\/base\/([A-Za-z0-9]+)/);
+      const appToken = match?.[1] ?? "";
+      const tableId  = u.searchParams.get("table") ?? "";
+      return appToken && tableId ? { appToken, tableId } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // ── DOM refs ────────────────────────────────────────────────────
+  const urlInput   = document.getElementById("urlInput");
+  const startBtn   = document.getElementById("startBtn");
+  const urlHint    = document.getElementById("urlHint");
+  const statsBar   = document.getElementById("statsBar");
+  const listSection= document.getElementById("listSection");
+  const recordList = document.getElementById("recordList");
+  const summaryEl  = document.getElementById("summary");
+
+  // ── Input validation ────────────────────────────────────────────
+  urlInput.addEventListener("input", () => {
+    const val = urlInput.value.trim();
+    if (!val) {
+      urlHint.textContent = "从飞书表格顶部复制完整链接粘贴在此";
+      urlHint.className   = "url-hint";
+      startBtn.disabled   = true;
+      return;
+    }
+    const parsed = parseFeishuUrl(val);
+    if (parsed) {
+      urlHint.textContent = `✓  已识别 — AppToken: ${parsed.appToken.slice(0,8)}…  TableID: ${parsed.tableId}`;
+      urlHint.className   = "url-hint ok";
+      startBtn.disabled   = false;
+    } else {
+      urlHint.textContent = "链接格式不对，请复制飞书表格完整 URL（需包含 ?table= 参数）";
+      urlHint.className   = "url-hint error";
+      startBtn.disabled   = true;
+    }
+  });
+
+  // ── 记录行管理 ──────────────────────────────────────────────────
+  const rowMap = {}; // recordId → { li, steps }
+
+  function addRow(index, total, recordId, preview) {
+    const li = document.createElement("li");
+    li.className = "record-item";
+    li.innerHTML = `
+      <span class="record-icon pending" id="icon-${recordId}">○</span>
+      <span class="record-text muted" id="text-${recordId}">[${String(index+1).padStart(2)}/${total}] ${preview}…</span>
+      <span class="record-steps" id="steps-${recordId}">
+        <span class="step" id="s1-${recordId}">①翻译</span>
+        <span class="step" id="s2-${recordId}">②语音</span>
+        <span class="step" id="s3-${recordId}">③上传</span>
+        <span class="step" id="s4-${recordId}">④写回</span>
+      </span>
+    `;
+    recordList.appendChild(li);
+    rowMap[recordId] = li;
+  }
+
+  const STEP_MAP = { translating: 1, tts: 2, uploading: 3, saving: 4 };
+
+  function updateRow(recordId, step, isError) {
+    const icon = document.getElementById(`icon-${recordId}`);
+    const text = document.getElementById(`text-${recordId}`);
+    if (!icon) return;
+
+    if (step === "done") {
+      icon.textContent = "✓"; icon.className = "record-icon done";
+      text.classList.remove("muted");
+      [1,2,3,4].forEach(n => {
+        const s = document.getElementById(`s${n}-${recordId}`);
+        if (s) s.className = "step done";
+      });
+      return;
+    }
+    if (step === "error" || isError) {
+      icon.textContent = "✕"; icon.className = "record-icon error";
+      return;
+    }
+
+    const n = STEP_MAP[step];
+    if (!n) return;
+    icon.textContent = "…"; icon.className = "record-icon active";
+    text.classList.remove("muted");
+
+    // mark previous steps done, current active
+    for (let i = 1; i <= 4; i++) {
+      const s = document.getElementById(`s${i}-${recordId}`);
+      if (!s) continue;
+      if (i < n)       s.className = "step done";
+      else if (i === n) s.className = "step active";
+      else              s.className = "step";
+    }
+    // auto-scroll
+    rowMap[recordId]?.scrollIntoView({ block: "nearest" });
+  }
+
+  // ── Main process ────────────────────────────────────────────────
+  startBtn.addEventListener("click", async () => {
+    const parsed = parseFeishuUrl(urlInput.value);
+    if (!parsed) return;
+
+    // Reset UI
+    startBtn.disabled = true;
+    urlInput.disabled = true;
+    recordList.innerHTML = "";
+    Object.keys(rowMap).forEach(k => delete rowMap[k]);
+    summaryEl.className  = "summary";
+    summaryEl.innerHTML  = "";
+    statsBar.className   = "stats-bar";
+    listSection.className= "list-section";
+
+    statsBar.innerHTML   = "⏳  正在连接飞书…";
+    statsBar.classList.add("show");
+
+    try {
+      const resp = await fetch("/api/feishu/stream", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(parsed),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+        throw new Error(err.error ?? `HTTP ${resp.status}`);
+      }
+
+      const reader  = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let   buf     = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop(); // keep incomplete line
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          let evt;
+          try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+          handleEvent(evt);
+        }
+      }
+    } catch (err) {
+      statsBar.innerHTML = `❌  连接失败：${err.message}`;
+      startBtn.disabled  = false;
+      urlInput.disabled  = false;
+    }
+  });
+
+  function handleEvent(evt) {
+    switch (evt.type) {
+
+      case "status":
+        statsBar.innerHTML = `⏳  ${evt.message}`;
+        break;
+
+      case "info":
+        listSection.classList.add("show");
+        if (evt.total === 0) {
+          statsBar.innerHTML = `ℹ️  全部 ${evt.all} 条记录均已处理，无需重复操作。`;
+          showSummary(0, 0);
+        } else {
+          statsBar.innerHTML = `共 <strong>${evt.all}</strong> 条 &nbsp;·&nbsp; 待处理 <strong>${evt.total}</strong> 条 &nbsp;·&nbsp; 已跳过 <strong>${evt.skipped}</strong> 条`;
+        }
+        break;
+
+      case "progress":
+        if (!rowMap[evt.recordId]) addRow(evt.index, evt.total, evt.recordId, evt.preview);
+        updateRow(evt.recordId, evt.step, false);
+        // update header progress
+        if (evt.step !== "done") {
+          const stepLabel = { translating:"翻译", tts:"生成语音", uploading:"上传", saving:"写回表格" };
+          statsBar.innerHTML = `处理中 <strong>${evt.index + 1}/${evt.total}</strong> &nbsp;—&nbsp; ${stepLabel[evt.step] ?? ""}…`;
+        }
+        break;
+
+      case "complete":
+        statsBar.innerHTML = `✅  处理完成 &nbsp;·&nbsp; 成功 <strong>${evt.success}</strong> 条 &nbsp;·&nbsp; 失败 <strong>${evt.failed}</strong> 条`;
+        showSummary(evt.success, evt.failed);
+        urlInput.disabled  = false;
+        startBtn.disabled  = false;
+        startBtn.textContent = "再次处理";
+        break;
+
+      case "fatal":
+        statsBar.innerHTML = `❌  错误：${evt.error}`;
+        urlInput.disabled  = false;
+        startBtn.disabled  = false;
+        break;
+    }
+  }
+
+  function showSummary(success, failed) {
+    summaryEl.classList.add("show");
+    if (failed === 0) {
+      summaryEl.className = "summary show success";
+      summaryEl.innerHTML = `
+        <div class="summary-title">✅ 全部完成！</div>
+        <div>成功处理 ${success} 条 — 英文翻译和语音已写回飞书表格。</div>
+        <div class="summary-sub">下次新增记录后直接再次点击「开始处理」，已处理的行会自动跳过。</div>
+      `;
+    } else {
+      summaryEl.className = "summary show partial";
+      summaryEl.innerHTML = `
+        <div class="summary-title">⚠️ 部分完成</div>
+        <div>成功 ${success} 条，失败 ${failed} 条 — 失败条目可重新运行处理。</div>
+        <div class="summary-sub">失败原因见上方列表，通常为网络波动，重新点击「开始处理」可重试。</div>
+      `;
+    }
+  }
+</script>
+</body>
+</html>

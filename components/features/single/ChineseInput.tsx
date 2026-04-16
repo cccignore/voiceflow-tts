@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, type KeyboardEvent } from "react";
 import { Sparkles } from "lucide-react";
-import { EXAMPLE_TEXT } from "@/constants/voices";
+import { EXAMPLE_TEXT } from "@/config/voices";
 import { cn } from "@/lib/utils";
 
 const MAX_CHARS = 500;

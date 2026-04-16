@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronUp, Copy, Check, Star, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { VOICES } from "@/constants/voices";
+import { VOICES } from "@/config/voices";
 import type { HistoryItem } from "@/types";
 import { cn } from "@/lib/utils";
 

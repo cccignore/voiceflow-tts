@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { BatchItemCard }           from "./BatchItemCard";
-import { VOICES, DEFAULT_VOICE_ID } from "@/constants/voices";
+import { VOICES, DEFAULT_VOICE_ID } from "@/config/voices";
 import { bufferToBase64 }          from "@/lib/audio";
 import type { BatchItem, TranslationResult } from "@/types";
 import { cn } from "@/lib/utils";

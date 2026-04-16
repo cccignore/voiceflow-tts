@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Header }        from "@/components/layout/Header";
-import { SingleMode }    from "@/components/features/SingleMode";
-import { BatchMode }     from "@/components/features/BatchMode";
-import { HistoryPanel }  from "@/components/features/HistoryPanel";
-import { useHistory }    from "@/hooks/useHistory";
-import { useMode }       from "@/contexts/mode-context";
-import type { SingleModeResult }          from "@/components/features/SingleMode";
-import type { BatchItemCompletePayload }   from "@/components/features/BatchMode";
-import type { HistoryItem }               from "@/types";
+import { Header } from "@/components/layout/Header";
+import { BatchMode } from "@/components/features/batch/BatchMode";
+import { HistoryPanel } from "@/components/features/history/HistoryPanel";
+import { SingleMode } from "@/components/features/single/SingleMode";
+import { useMode } from "@/contexts/mode-context";
+import { useHistory } from "@/hooks/useHistory";
+import type { BatchItemCompletePayload } from "@/components/features/batch/BatchMode";
+import type { SingleModeResult } from "@/components/features/single/SingleMode";
+import type { HistoryItem } from "@/types";
 
 function PageContent({
   onSingleComplete,

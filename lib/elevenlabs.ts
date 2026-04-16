@@ -1,4 +1,4 @@
-import { VOICES } from "@/constants/voices";
+import { VOICES } from "@/config/voices";
 import type { VoiceSettings } from "@/types";
 
 const ELEVENLABS_BASE = "https://api.elevenlabs.io/v1";
